@@ -12,8 +12,9 @@ import 'package:evorun/workout_config.dart';
 
 class WorkoutsScreen extends StatefulWidget {
   final String token;
+  final String userEmail;
   final VoidCallback onDataChanged;
-  const WorkoutsScreen({super.key, required this.token, required this.onDataChanged});
+  const WorkoutsScreen({super.key, required this.token, required this.userEmail, required this.onDataChanged});
 
   @override
   State<WorkoutsScreen> createState() => _WorkoutsScreenState();
@@ -37,7 +38,9 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
   Future<void> _fetchWorkoutsFromLocalDb() async {
     if (!mounted) return;
     setState(() { _isLoading = true; });
-    final localWorkouts = await DatabaseHelper().getWorkouts();
+
+    final localWorkouts = await DatabaseHelper().getWorkouts(widget.userEmail);
+
     if (mounted) {
       setState(() {
         _workouts = localWorkouts;

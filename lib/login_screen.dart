@@ -121,6 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       Map<String, dynamic>? userProfile;
                       String? token;
+                      final currentUser = _emailController.text;
 
                       try {
                         final loginData = await _loginApi();
@@ -135,31 +136,37 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                           if (mounted && profileResponse.statusCode == 200) {
                             userProfile = jsonDecode(profileResponse.body);
+
+                            // --- PONTO DE DEPURAÇÃO ---
+                            print('Perfil recebido do servidor para $currentUser: $userProfile');
+
                             await DatabaseHelper().saveUserProfile(userProfile!, token!);
-                            await DatabaseHelper().saveWorkouts(userProfile['workouts']);
+                            final workouts = userProfile['workouts'] as List<dynamic>;
+                            await DatabaseHelper().saveWorkouts(workouts, currentUser);
                           }
                         } else {
                           // --- LÓGICA DE LOGIN OFFLINE ---
-                          print('Login online falhou. Tentando login offline...');
-                          userProfile = await DatabaseHelper().getUserProfile(_emailController.text);
+                          userProfile = await DatabaseHelper().getUserProfile(currentUser);
                           if (userProfile != null) {
                             token = userProfile['token'] as String?;
                           }
                         }
 
-                        // --- LÓGICA COMUM APÓS SUCESSO (ONLINE OU OFFLINE) ---
+                        // --- LÓGICA COMUM APÓS SUCESSO ---
                         if (mounted && userProfile != null && token != null) {
-                          await _handleRememberMe(); // CHAMADO AQUI, NO CAMINHO DE SUCESSO
+                          await _handleRememberMe();
+
+                          final userEmail = userProfile['email'] as String;
 
                           if (userProfile['full_name'] == null) {
-                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => OnboardingScreen(token: token!)));
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => OnboardingScreen(token: token!, userEmail: userEmail)));
                           } else {
-                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainScaffold(token: token!)));
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainScaffold(token: token!, userEmail: userEmail)));
                           }
                         } else if(mounted) {
                           // --- FALHA FINAL ---
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Offline ou credenciais incorretas. Apenas contas já usadas podem entrar.'), backgroundColor: Colors.orange),
+                            const SnackBar(content: Text('Offline ou credenciais incorretas.'), backgroundColor: Colors.orange),
                           );
                         }
                       } finally {

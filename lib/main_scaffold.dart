@@ -11,7 +11,8 @@ import 'package:http/http.dart' as http;
 
 class MainScaffold extends StatefulWidget {
   final String token;
-  const MainScaffold({super.key, required this.token});
+  final String userEmail;
+  const MainScaffold({super.key, required this.token, required this.userEmail});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -23,6 +24,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   bool _hasUnsyncedChanges = false;
   bool _isSyncing = false;
 
+  @override
   @override
   void initState() {
     super.initState();
@@ -128,33 +130,35 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 4) { // Índice para 'Sair'
+    if (index == 4) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
             (Route<dynamic> route) => false,
       );
     } else {
-      setState(() { _selectedIndex = index; });
+      setState(() {
+        _selectedIndex = index;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // CORREÇÃO: A lista de páginas agora é criada dentro do build.
-    // Isso garante que ela sempre use o valor mais recente de _hasUnsyncedChanges.
+    // A lista de páginas é criada AQUI DENTRO do build.
     final List<Widget> pages = <Widget>[
       const Center(child: Text('Tela de Início')),
-      WorkoutsScreen(token: widget.token, onDataChanged: _checkForUnsyncedChanges),
+      WorkoutsScreen(token: widget.token, userEmail: widget.userEmail, onDataChanged: _checkForUnsyncedChanges),
       const Center(child: Text('Tela de Relatórios')),
       PerfilScreen(
         onSync: _syncLocalChangesToServer,
-        hasUnsyncedChanges: _hasUnsyncedChanges, // Passa o estado atualizado
+        hasUnsyncedChanges: _hasUnsyncedChanges,
       ),
     ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('EvoTrack'), backgroundColor: Colors.blue[800], automaticallyImplyLeading: false),
+      // E usada AQUI com o nome correto 'pages' (sem underscore)
       body: pages.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[

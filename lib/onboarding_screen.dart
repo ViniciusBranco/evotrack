@@ -7,7 +7,8 @@ import 'package:evorun/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final String token;
-  const OnboardingScreen({super.key, required this.token});
+  final String userEmail;
+  const OnboardingScreen({super.key, required this.token, required this.userEmail});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -30,7 +31,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => DashboardScreen(token: widget.token),
+          builder: (context) => DashboardScreen(token: widget.token, userEmail: widget.userEmail),
         ),
       );
     }

@@ -78,11 +78,12 @@ class DatabaseHelper {
     print('Workout ID $id excluído permanentemente do banco local.');
   }
 
-  Future<List<Map<String, dynamic>>> getWorkouts() async {
+  Future<List<Map<String, dynamic>>> getWorkouts(String userEmail) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'workouts',
-      where: 'to_be_deleted = 0',
+      where: 'to_be_deleted = 0 AND user_email = ?', // Filtra por email
+      whereArgs: [userEmail],
     );
 
     // O 'details' está salvo como uma string JSON, precisamos decodificá-lo
@@ -140,6 +141,7 @@ class DatabaseHelper {
       CREATE TABLE workouts (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         api_id INTEGER UNIQUE,
+        user_email TEXT NOT NULL,
         workout_type TEXT,
         workout_date TEXT,
         duration_minutes INTEGER,
@@ -186,29 +188,29 @@ class DatabaseHelper {
     print("Perfil de ${userProfile['email']} salvo localmente.");
   }
 
-  // Método para salvar os treinos
-  Future<void> saveWorkouts(List<dynamic> workouts) async {
+  // Agora recebe o email do usuário para associar aos treinos
+  Future<void> saveWorkouts(List<dynamic> workouts, String userEmail) async {
     final db = await database;
-    final batch = db.batch(); // Usa batch para operações em massa
+    final batch = db.batch();
 
     for (var workout in workouts) {
       batch.insert(
         'workouts',
         {
           'api_id': workout['id'],
+          'user_email': userEmail, // Associa o treino ao usuário
           'workout_type': workout['workout_type'],
           'workout_date': workout['workout_date'],
           'duration_minutes': workout['duration_minutes'],
           'distance_km': workout['distance_km'],
           'details': jsonEncode(workout['details']),
-          'to_be_deleted': 0, // Garante que não está marcado para exclusão
-          'synced': 1, // <-- A CORREÇÃO CRÍTICA ESTÁ AQUI
+          'to_be_deleted': 0,
+          'synced': 1,
         },
-        // Usamos replace para garantir que o dado do servidor sempre se sobreponha na sincronização inicial
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
     await batch.commit(noResult: true);
-    print("${workouts.length} treinos do servidor salvos localmente (e marcados como sincronizados).");
+    print("${workouts.length} treinos de $userEmail salvos localmente.");
   }
 }
