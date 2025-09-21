@@ -12,6 +12,15 @@ class DatabaseHelper {
 
   static Database? _database;
 
+  // Função para dizer se há algo para sincronizar
+  Future<bool> hasUnsyncedChanges() async {
+    final db = await database;
+    final toCreate = await db.query('workouts', where: 'api_id IS NULL AND synced = 0');
+    final toUpdate = await db.query('workouts', where: 'api_id IS NOT NULL AND synced = 0');
+    final toDelete = await db.query('workouts', where: 'to_be_deleted = 1');
+    return toCreate.isNotEmpty || toUpdate.isNotEmpty || toDelete.isNotEmpty;
+  }
+
   // Método para criar um novo treino localmente
   Future<void> createWorkout(Map<String, dynamic> workout) async {
     final db = await database;
@@ -191,12 +200,15 @@ class DatabaseHelper {
           'workout_date': workout['workout_date'],
           'duration_minutes': workout['duration_minutes'],
           'distance_km': workout['distance_km'],
-          'details': jsonEncode(workout['details']), // Detalhes precisam ser string
+          'details': jsonEncode(workout['details']),
+          'to_be_deleted': 0, // Garante que não está marcado para exclusão
+          'synced': 1, // <-- A CORREÇÃO CRÍTICA ESTÁ AQUI
         },
+        // Usamos replace para garantir que o dado do servidor sempre se sobreponha na sincronização inicial
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
     await batch.commit(noResult: true);
-    print("${workouts.length} treinos salvos localmente.");
+    print("${workouts.length} treinos do servidor salvos localmente (e marcados como sincronizados).");
   }
 }

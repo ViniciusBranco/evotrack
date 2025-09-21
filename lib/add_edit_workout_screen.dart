@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:evorun/database_helper.dart';
-import 'package:evorun/workout_config.dart'; // Importa nossa nova configuração central
+import 'package:evorun/workout_config.dart';
 
 class AddEditWorkoutScreen extends StatefulWidget {
   final Map<String, dynamic>? workout;
@@ -17,16 +17,15 @@ class AddEditWorkoutScreen extends StatefulWidget {
 
 class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
   late DateTime _dateForWorkout;
-
-  // O valor guardado é o 'displayName', ex: "Corrida"
   String? _selectedWorkoutType;
-  // A lista de opções para o dropdown, vinda da nossa configuração
   final List<String> _workoutDisplayNames = workoutConfig.values.map((info) => info.displayName).toList();
 
   final _durationController = TextEditingController();
   final _distanceController = TextEditingController();
   final _exerciseNameController = TextEditingController();
   final _weightController = TextEditingController();
+  final _setsController = TextEditingController();
+  final _repsController = TextEditingController();
 
   bool get isEditing => widget.workout != null;
 
@@ -43,6 +42,8 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
       if (workout['details'] != null) {
         _exerciseNameController.text = workout['details']['exercise'] ?? '';
         _weightController.text = workout['details']['weight_kg']?.toString() ?? '';
+        _setsController.text = workout['details']['sets']?.toString() ?? '';
+        _repsController.text = workout['details']['reps']?.toString() ?? '';
       }
     }
   }
@@ -68,14 +69,21 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
       return;
     }
 
-    // Busca o 'apiName' (ex: 'weightlifting') a partir do 'displayName' (ex: 'Musculação')
     final apiName = workoutConfig.values.firstWhere((info) => info.displayName == _selectedWorkoutType).apiName;
-
     final details = <String, dynamic>{};
+
+    // Lógica de construção do 'details'
     if (apiName == 'weightlifting') {
-      details['exercise'] = _exerciseNameController.text;
+      // CORREÇÃO: Garante que todos os campos necessários sejam incluídos
+      details['exercise'] = _exerciseNameController.text.isNotEmpty ? _exerciseNameController.text : 'Musculação';
+      details['sets'] = int.tryParse(_setsController.text) ?? 0;
+      details['reps'] = int.tryParse(_repsController.text) ?? 0;
       details['weight_kg'] = double.tryParse(_weightController.text) ?? 0.0;
     }
+    // Adicione outras lógicas aqui se necessário, ex: para Escada
+    // else if (apiName == 'stairs') {
+    //   details['steps'] = int.tryParse(_stepsController.text);
+    // }
 
     final distance = double.tryParse(_distanceController.text);
     final workoutData = {
@@ -126,17 +134,32 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
             const SizedBox(height: 16),
             if (_selectedWorkoutType == 'Corrida' || _selectedWorkoutType == 'Ciclismo' || _selectedWorkoutType == 'Natação')
               Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextField(
-                    controller: _distanceController,
-                    // Lógica do label
-                    decoration: InputDecoration(labelText: _selectedWorkoutType == 'Natação' ? 'Distância (m)' : 'Distância (km)'),
-                    keyboardType: TextInputType.number,
-                  ),
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: TextField(
+                  controller: _distanceController,
+                  decoration: InputDecoration(labelText: _selectedWorkoutType == 'Natação' ? 'Distância (m)' : 'Distância (km)'),
+                  keyboardType: TextInputType.number,
+                ),
               ),
             if (_selectedWorkoutType == 'Musculação') ...[
-              Padding(padding: const EdgeInsets.only(bottom: 16.0), child: TextField(controller: _exerciseNameController, decoration: const InputDecoration(labelText: 'Nome do Treino (Ex: Treino A)'))),
-              Padding(padding: const EdgeInsets.only(bottom: 16.0), child: TextField(controller: _weightController, decoration: const InputDecoration(labelText: 'Carga Total (kg)'), keyboardType: TextInputType.number)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: TextField(controller: _exerciseNameController, decoration: const InputDecoration(labelText: 'Nome do Treino (Ex: Treino A)')),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                // child: Row(
+                //   children: [
+                //     Expanded(child: TextField(controller: _setsController, decoration: const InputDecoration(labelText: 'Séries'), keyboardType: TextInputType.number)),
+                //     const SizedBox(width: 16),
+                //     Expanded(child: TextField(controller: _repsController, decoration: const InputDecoration(labelText: 'Repetições'), keyboardType: TextInputType.number)),
+                //   ],
+                // ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: TextField(controller: _weightController, decoration: const InputDecoration(labelText: 'Carga Total (kg)'), keyboardType: TextInputType.number),
+              ),
             ],
             TextField(controller: _durationController, decoration: const InputDecoration(labelText: 'Duração (min)'), keyboardType: TextInputType.number),
             const SizedBox(height: 24),

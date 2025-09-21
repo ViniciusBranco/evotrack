@@ -8,11 +8,12 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:evorun/add_edit_workout_screen.dart';
 import 'package:evorun/config.dart';
 import 'package:evorun/database_helper.dart';
-import 'package:evorun/workout_config.dart'; // Importa nossa nova configuração central
+import 'package:evorun/workout_config.dart';
 
 class WorkoutsScreen extends StatefulWidget {
   final String token;
-  const WorkoutsScreen({super.key, required this.token});
+  final VoidCallback onDataChanged;
+  const WorkoutsScreen({super.key, required this.token, required this.onDataChanged});
 
   @override
   State<WorkoutsScreen> createState() => _WorkoutsScreenState();
@@ -29,123 +30,13 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-
-    // 1. Carrega a UI imediatamente com os dados locais
     _fetchWorkoutsFromLocalDb();
-
-    // 2. Inicia a sincronização em segundo plano
-    _syncLocalChangesToServer();
   }
 
+  // Esta função agora apenas lê os dados locais. A sincronização é feita em outro lugar.
   Future<void> _fetchWorkoutsFromLocalDb() async {
     if (!mounted) return;
     setState(() { _isLoading = true; });
-
-    print('Carregando treinos do banco de dados local para exibição...');
-    final localWorkouts = await DatabaseHelper().getWorkouts();
-
-    if (mounted) {
-      setState(() {
-        _workouts = localWorkouts;
-        _isLoading = false;
-        _filterWorkoutsForSelectedDay();
-      });
-    }
-  }
-
-  Future<void> _syncLocalChangesToServer() async {
-    print('Iniciando sincronização com o servidor...');
-
-    // 1. Sincronizar exclusões
-    final workoutsToDelete = await DatabaseHelper().getWorkoutsToDelete();
-    for (var workout in workoutsToDelete) {
-      if (workout['api_id'] != null) {
-        final url = Uri.parse('http://$apiDomain/api/v1/workouts/${workout['api_id']}');
-        try {
-          final response = await http.delete(
-            url,
-            headers: {'Authorization': 'Bearer ${widget.token}'},
-          );
-          // SÓ DELETA LOCALMENTE SE O SERVIDOR CONFIRMAR (200, 204) OU SE JÁ NÃO EXISTIR LÁ (404)
-          if (response.statusCode == 200 || response.statusCode == 204 || response.statusCode == 404) {
-            await DatabaseHelper().deleteWorkoutPermanently(workout['id']);
-          }
-          // Se for 401 (acesso negado) ou outro erro, NADA acontece localmente.
-        } catch (e) {
-          print('Sem conexão para deletar. Tentando na próxima vez.');
-          break; // Para a sincronização se não houver conexão
-        }
-      } else {
-        await DatabaseHelper().deleteWorkoutPermanently(workout['id']);
-      }
-    }
-
-    // TODO: Sincronizar criações (POST) e atualizações (PUT)
-
-    // 2. Sincronizar CRIAÇÕES
-    final workoutsToCreate = await DatabaseHelper().getWorkoutsToCreate();
-    for (var workout in workoutsToCreate) {
-      final url = Uri.parse('http://$apiDomain/api/v1/workouts/');
-      try {
-        final response = await http.post(
-          url,
-          headers: {
-            'Authorization': 'Bearer ${widget.token}',
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          // O corpo precisa ser um mapa sem o 'id' local e com 'details' decodificado
-          body: jsonEncode({
-            'workout_type': workout['workout_type'],
-            'workout_date': workout['workout_date'],
-            'duration_minutes': workout['duration_minutes'],
-            'distance_km': workout['distance_km'],
-            'details': jsonDecode(workout['details']),
-          }),
-        );
-        if (response.statusCode == 201) { // 201 Created
-          final newApiWorkout = jsonDecode(response.body);
-          await DatabaseHelper().updateApiIdAndMarkSynced(workout['id'], newApiWorkout['id']);
-          print('Workout local ${workout['id']} criado no servidor com api_id ${newApiWorkout['id']}.');
-        }
-      } catch (e) { print('Sem conexão para criar. Tentando na próxima vez.'); break; }
-    }
-
-    // 3. Sincronizar ATUALIZAÇÕES
-    final workoutsToUpdate = await DatabaseHelper().getWorkoutsToUpdate();
-    for (var workout in workoutsToUpdate) {
-      final url = Uri.parse('http://$apiDomain/api/v1/workouts/${workout['api_id']}');
-      try {
-        final response = await http.put(
-          url,
-          headers: {
-            'Authorization': 'Bearer ${widget.token}',
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode({
-            'workout_type': workout['workout_type'],
-            'workout_date': workout['workout_date'],
-            'duration_minutes': workout['duration_minutes'],
-            'distance_km': workout['distance_km'],
-            'details': jsonDecode(workout['details']),
-          }),
-        );
-        if (response.statusCode == 200) { // 200 OK
-          await DatabaseHelper().markWorkoutAsSynced(workout['id']);
-          print('Workout ${workout['api_id']} atualizado no servidor.');
-        }
-      } catch (e) { print('Sem conexão para atualizar. Tentando na próxima vez.'); break; }
-    }
-    print('Sincronização finalizada.');
-    // Após sincronizar, recarrega a lista para refletir quaisquer exclusões permanentes
-    _fetchWorkoutsFromLocalDb();
-  }
-
-  Future<void> _fetchWorkouts() async {
-    if (!mounted) return;
-    setState(() { _isLoading = true; });
-
-    await _syncLocalChangesToServer();
-
     final localWorkouts = await DatabaseHelper().getWorkouts();
     if (mounted) {
       setState(() {
@@ -179,11 +70,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                 Navigator.pop(ctx);
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => AddEditWorkoutScreen(workout: workout, selectedDate: _selectedDay!),
-                  ),
+                  MaterialPageRoute(builder: (context) => AddEditWorkoutScreen(workout: workout, selectedDate: _selectedDay!)),
                 );
-                _fetchWorkouts();
+                _fetchWorkoutsFromLocalDb();
+                widget.onDataChanged(); // Notifica o MainScaffold
               },
             ),
             ListTile(
@@ -216,6 +106,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                 _workouts.removeWhere((w) => w['id'] == workoutId);
                 _filteredWorkouts.removeWhere((w) => w['id'] == workoutId);
               });
+              widget.onDataChanged(); // Notifica o MainScaffold
               Navigator.of(ctx).pop();
             },
           ),
@@ -230,25 +121,18 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
 
   String _buildSubtitle(Map<String, dynamic> workout) {
     final parts = <String>[];
-    if (workout['duration_minutes'] != null) {
-      parts.add('${workout['duration_minutes']} min');
-    }
-    if (workout['distance_km'] != null) {
-      parts.add('${workout['distance_km']} km');
-    }
     final type = workout['workout_type'].toLowerCase();
+
+    if (workout['duration_minutes'] != null) { parts.add('${workout['duration_minutes']} min'); }
     if (workout['distance_km'] != null) {
       if (type == 'swimming') {
-        // Converte km para metros para exibir
         parts.add('${(workout['distance_km'] * 1000).toStringAsFixed(0)} m');
       } else {
         parts.add('${workout['distance_km']} km');
       }
     }
-    if (type == 'weightlifting') {
-      if (workout['details'] != null && workout['details']['weight_kg'] != null) {
-        parts.add('Carga: ${workout['details']['weight_kg']} kg');
-      }
+    if (type == 'weightlifting' && workout['details'] != null && workout['details']['weight_kg'] != null) {
+      parts.add('Carga: ${workout['details']['weight_kg']} kg');
     }
     return parts.isNotEmpty ? parts.join(' | ') : 'Sem detalhes';
   }
@@ -342,7 +226,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
               builder: (context) => AddEditWorkoutScreen(selectedDate: _selectedDay ?? DateTime.now()),
             ),
           );
-          _fetchWorkouts();
+          _fetchWorkoutsFromLocalDb();
+          widget.onDataChanged();
         },
         backgroundColor: Colors.amber[800],
         child: const Icon(Icons.add),
