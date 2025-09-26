@@ -21,6 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
+  bool _isPasswordObscured = true;
+
 
   @override
   void initState() {
@@ -66,12 +68,12 @@ class _LoginScreenState extends State<LoginScreen> {
         url,
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {'username': _emailController.text, 'password': _passwordController.text},
-      );
+      ).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      print('Erro de conexão na API de login: $e');
+      print('Erro de conexão ou timeout na API de login: $e');
     }
     return null;
   }
@@ -98,8 +100,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Senha'),
+                    obscureText: _isPasswordObscured,
+                    decoration: InputDecoration(
+                        labelText: 'Senha',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          // Muda o ícone baseado no estado (olho aberto vs. fechado)
+                          _isPasswordObscured ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        // PASSO 3: Lógica para alternar a visibilidade
+                        onPressed: () {
+                          // Usa setState para reconstruir a tela com o novo estado
+                          setState(() {
+                            _isPasswordObscured = !_isPasswordObscured;
+                          });
+                        },
+                      ),
+                    ),
+
                     enabled: !_isLoading,
                   ),
                   const SizedBox(height: 16),

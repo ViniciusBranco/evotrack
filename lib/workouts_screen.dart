@@ -73,7 +73,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                 Navigator.pop(ctx);
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AddEditWorkoutScreen(workout: workout, selectedDate: _selectedDay!)),
+                  MaterialPageRoute(builder: (context) => AddEditWorkoutScreen(workout: workout, selectedDate: _selectedDay!, userEmail: widget.userEmail)),
                 );
                 _fetchWorkoutsFromLocalDb();
                 widget.onDataChanged(); // Notifica o MainScaffold
@@ -169,10 +169,13 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
             calendarBuilders: CalendarBuilders(
               selectedBuilder: (context, day, focusedDay) {
                 final workoutsForDay = _getWorkoutsForDay(day);
-                final colors = workoutsForDay.map((w) => getWorkoutInfo(w['workout_type']).color).toSet().toList();
+                final colors = workoutsForDay
+                    .map((w) => WorkoutVisualsService().getInfo(w['workout_type']).color) // USA O SERVIÇO
+                    .toSet()
+                    .toList();
                 return Container(
                   margin: const EdgeInsets.all(4.0),
-                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.blue[800]!, width: 2)),
+                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.blue[800]!, width: 4)),
                   child: Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(shape: BoxShape.circle, gradient: colors.length > 1 ? LinearGradient(colors: colors) : null, color: colors.length == 1 ? colors.first : null),
@@ -183,15 +186,30 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
               defaultBuilder: (context, day, focusedDay) {
                 final workoutsForDay = _getWorkoutsForDay(day);
                 if (workoutsForDay.isNotEmpty) {
-                  final colors = workoutsForDay.map((w) => getWorkoutInfo(w['workout_type']).color).toSet().toList();
+                  final colors = workoutsForDay
+                      .map((w) => WorkoutVisualsService().getInfo(w['workout_type']).color) // USA O SERVIÇO
+                      .toSet()
+                      .toList();
                   return Container(
                     margin: const EdgeInsets.all(4.0),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(shape: BoxShape.circle, gradient: colors.length > 1 ? LinearGradient(colors: colors) : null, color: colors.length == 1 ? colors.first : null),
                     child: Text('${day.day}', style: TextStyle(color: colors.isNotEmpty ? Colors.white : Colors.black)),
                   );
+                } else {
+                  return Container(
+                    margin: const EdgeInsets.all(4.0),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WorkoutVisualsService().getInfo('no_workout').color,
+                    ),
+                    child: Text(
+                      '${day.day}',
+                      style: const TextStyle(color: Colors.black), // Cor do texto para dias ociosos
+                    ),
+                  );
                 }
-                return null;
               },
             ),
           ),
@@ -209,7 +227,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
               itemCount: _filteredWorkouts.length,
               itemBuilder: (context, index) {
                 final workout = _filteredWorkouts[index];
-                final workoutInfo = getWorkoutInfo(workout['workout_type']);
+                final workoutInfo = WorkoutVisualsService().getInfo(workout['workout_type']); // USA O SERVIÇO
                 return ListTile(
                   leading: Icon(workoutInfo.icon, color: workoutInfo.color),
                   title: Text(workoutInfo.displayName),
@@ -226,7 +244,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddEditWorkoutScreen(selectedDate: _selectedDay ?? DateTime.now()),
+              builder: (context) => AddEditWorkoutScreen(selectedDate: _selectedDay ?? DateTime.now(), userEmail: widget.userEmail),
             ),
           );
           _fetchWorkoutsFromLocalDb();

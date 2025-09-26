@@ -8,8 +8,9 @@ import 'package:evorun/workout_config.dart';
 class AddEditWorkoutScreen extends StatefulWidget {
   final Map<String, dynamic>? workout;
   final DateTime selectedDate;
+  final String userEmail;
 
-  const AddEditWorkoutScreen({super.key, this.workout, required this.selectedDate});
+  const AddEditWorkoutScreen({super.key, this.workout, required this.selectedDate, required this.userEmail});
 
   @override
   State<AddEditWorkoutScreen> createState() => _AddEditWorkoutScreenState();
@@ -18,14 +19,14 @@ class AddEditWorkoutScreen extends StatefulWidget {
 class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
   late DateTime _dateForWorkout;
   String? _selectedWorkoutType;
-  final List<String> _workoutDisplayNames = workoutConfig.values.map((info) => info.displayName).toList();
+  final List<String> _workoutDisplayNames = WorkoutVisualsService().getAllConfigs().values.map((info) => info.displayName).toList();
 
   final _durationController = TextEditingController();
   final _distanceController = TextEditingController();
   final _exerciseNameController = TextEditingController();
   final _weightController = TextEditingController();
   final _setsController = TextEditingController();
-  final _repsController = TextEditingController();
+  final _repsController = TextEditingController(); // Controller que faltava
 
   bool get isEditing => widget.workout != null;
 
@@ -36,7 +37,7 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
     if (isEditing) {
       final workout = widget.workout!;
       _dateForWorkout = DateTime.parse(workout['workout_date']);
-      _selectedWorkoutType = getWorkoutInfo(workout['workout_type']).displayName;
+      _selectedWorkoutType = WorkoutVisualsService().getInfo(workout['workout_type']).displayName;
       _durationController.text = workout['duration_minutes']?.toString() ?? '';
       _distanceController.text = workout['distance_km']?.toString() ?? '';
       if (workout['details'] != null) {
@@ -69,24 +70,19 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
       return;
     }
 
-    final apiName = workoutConfig.values.firstWhere((info) => info.displayName == _selectedWorkoutType).apiName;
+    final apiName = WorkoutVisualsService().getAllConfigs().values.firstWhere((info) => info.displayName == _selectedWorkoutType).apiName;
     final details = <String, dynamic>{};
 
-    // Lógica de construção do 'details'
     if (apiName == 'weightlifting') {
-      // CORREÇÃO: Garante que todos os campos necessários sejam incluídos
       details['exercise'] = _exerciseNameController.text.isNotEmpty ? _exerciseNameController.text : 'Musculação';
       details['sets'] = int.tryParse(_setsController.text) ?? 0;
       details['reps'] = int.tryParse(_repsController.text) ?? 0;
       details['weight_kg'] = double.tryParse(_weightController.text) ?? 0.0;
     }
-    // Adicione outras lógicas aqui se necessário, ex: para Escada
-    // else if (apiName == 'stairs') {
-    //   details['steps'] = int.tryParse(_stepsController.text);
-    // }
 
     final distance = double.tryParse(_distanceController.text);
     final workoutData = {
+      'user_email': widget.userEmail,
       'workout_type': apiName,
       'workout_date': _dateForWorkout.toIso8601String(),
       'duration_minutes': int.tryParse(_durationController.text),
@@ -103,6 +99,9 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
     if(mounted) Navigator.pop(context);
   }
 
+  // ===============================================================
+  // O MÉTODO BUILD QUE ESTAVA FALTANDO COMEÇA AQUI
+  // ===============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,13 +147,13 @@ class _AddEditWorkoutScreenState extends State<AddEditWorkoutScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
-                // child: Row(
-                //   children: [
-                //     Expanded(child: TextField(controller: _setsController, decoration: const InputDecoration(labelText: 'Séries'), keyboardType: TextInputType.number)),
-                //     const SizedBox(width: 16),
-                //     Expanded(child: TextField(controller: _repsController, decoration: const InputDecoration(labelText: 'Repetições'), keyboardType: TextInputType.number)),
-                //   ],
-                // ),
+                child: Row(
+                  children: [
+                    Expanded(child: TextField(controller: _setsController, decoration: const InputDecoration(labelText: 'Séries'), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 16),
+                    Expanded(child: TextField(controller: _repsController, decoration: const InputDecoration(labelText: 'Repetições'), keyboardType: TextInputType.number)),
+                  ],
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),

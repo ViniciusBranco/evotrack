@@ -5,11 +5,13 @@ import 'package:evorun/configuracoes_screen.dart';
 class PerfilScreen extends StatelessWidget {
   final Future<void> Function() onSync;
   final bool hasUnsyncedChanges; // Novo parâmetro
+  final String userEmail; // Novo parâmetro
 
   const PerfilScreen({
     super.key,
     required this.onSync,
     required this.hasUnsyncedChanges, // Novo parâmetro
+    required this.userEmail, // Novo parâmetro
   });
 
   @override
@@ -35,6 +37,7 @@ class PerfilScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => ConfiguracoesScreen(
+                  userEmail: userEmail, // Passe o email para a próxima tela
                   onSync: onSync,
                   hasUnsyncedChanges: hasUnsyncedChanges, // Passa para a próxima tela
                 ),

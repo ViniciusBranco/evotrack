@@ -1,14 +1,18 @@
 // lib/configuracoes_screen.dart
 import 'package:flutter/material.dart';
 
+import 'package:evorun/cores_interface_screen.dart';
+
 class ConfiguracoesScreen extends StatelessWidget {
   final Future<void> Function() onSync;
   final bool hasUnsyncedChanges;
+  final String userEmail;
 
   const ConfiguracoesScreen({
     super.key,
     required this.onSync,
     required this.hasUnsyncedChanges,
+    required this.userEmail,
   });
 
   @override
@@ -34,6 +38,18 @@ class ConfiguracoesScreen extends StatelessWidget {
                   ? 'Enviar alterações locais para o servidor'
                   : 'Seus dados já estão sincronizados',
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.color_lens),
+            title: const Text('Cores da Interface'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CoresInterfaceScreen(userEmail: userEmail),
+                ),
+              );
+            },
           ),
         ],
       ),

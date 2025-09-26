@@ -1,6 +1,6 @@
 // lib/database_helper.dart
 import 'dart:convert';
-
+import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -151,6 +151,14 @@ class DatabaseHelper {
         synced INTEGER DEFAULT 0
       )
     ''');
+    await db.execute('''
+    CREATE TABLE workout_colors (
+      user_email TEXT NOT NULL,
+      workout_type_id TEXT NOT NULL,
+      color_value INTEGER NOT NULL,
+      PRIMARY KEY (user_email, workout_type_id)
+    )
+  ''');
   }
 
   // Método para buscar um perfil de usuário pelo email
@@ -212,5 +220,46 @@ class DatabaseHelper {
     }
     await batch.commit(noResult: true);
     print("${workouts.length} treinos de $userEmail salvos localmente.");
+  }
+
+  // Salva ou atualiza uma cor customizada
+  Future<void> saveWorkoutColor(String userEmail, String workoutTypeId, Color color) async {
+    final db = await database;
+    await db.insert(
+      'workout_colors',
+      {
+        'user_email': userEmail,
+        'workout_type_id': workoutTypeId,
+        'color_value': color.toARGB32(), // Salva o valor inteiro da cor
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    print('Cor salva para $workoutTypeId: ${color.toARGB32()}');
+  }
+
+// Carrega todas as cores customizadas de um usuário
+  Future<Map<String, Color>> loadWorkoutColors(String userEmail) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'workout_colors',
+      where: 'user_email = ?',
+      whereArgs: [userEmail],
+    );
+
+    return {
+      for (var map in maps)
+        map['workout_type_id']: Color(map['color_value']),
+    };
+  }
+
+  // Limpa todas as cores customizadas de um usuário
+  Future<void> clearWorkoutColors(String userEmail) async {
+    final db = await database;
+    await db.delete(
+      'workout_colors',
+      where: 'user_email = ?',
+      whereArgs: [userEmail],
+    );
+    print('Cores customizadas de $userEmail foram resetadas no banco de dados.');
   }
 }

@@ -1,6 +1,7 @@
 // lib/main_scaffold.dart
 import 'dart:convert';
 import 'package:evorun/config.dart';
+import 'package:evorun/workout_config.dart';
 import 'package:evorun/configuracoes_screen.dart';
 import 'package:evorun/database_helper.dart';
 import 'package:evorun/login_screen.dart';
@@ -28,6 +29,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void initState() {
     super.initState();
+    WorkoutVisualsService().loadColorsFromDb(widget.userEmail);
     _checkForUnsyncedChanges();
   }
 
@@ -153,11 +155,12 @@ class _MainScaffoldState extends State<MainScaffold> {
       PerfilScreen(
         onSync: _syncLocalChangesToServer,
         hasUnsyncedChanges: _hasUnsyncedChanges,
+        userEmail: widget.userEmail,
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('EvoTrack'), backgroundColor: Colors.blue[800], automaticallyImplyLeading: false),
+      appBar: AppBar(title: const Text('EvoTrack'), backgroundColor: Colors.blue[900], automaticallyImplyLeading: false),
       // E usada AQUI com o nome correto 'pages' (sem underscore)
       body: pages.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
@@ -186,8 +189,8 @@ class _MainScaffoldState extends State<MainScaffold> {
           const BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Sair'),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800],
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: Colors.amber[900],
+        unselectedItemColor: Colors.grey[600],
         type: BottomNavigationBarType.fixed,
         onTap: _onItemTapped,
       ),
